@@ -59,6 +59,9 @@ Usage:  ota_from_target_files [flags] input_target_files output_ota_package
   --override_device <device>
       Override device-specific asserts. Can be a comma-separated list.
 
+  --persist <true|false>
+      Specify whether to enable persistence across installs (on by default).
+
 """
 
 import sys
@@ -97,6 +100,7 @@ OPTIONS.aslr_mode = True
 OPTIONS.worker_threads = 3
 OPTIONS.backuptool = False
 OPTIONS.override_device = 'auto'
+OPTIONS.persist = True
 
 def MostPopularKey(d, default):
   """Given a dict, return the key corresponding to the largest
@@ -411,6 +415,16 @@ fi
   return Item.Get("system/etc/install-recovery.sh", dir=False)
 
 
+def CopyInstallTools(output_zip):
+  oldcwd = os.getcwd()
+  os.chdir(os.getenv('OUT'))
+  for root, subdirs, files in os.walk("install"):
+    for f in files:
+      p = os.path.join(root, f)
+      output_zip.write(p, p)
+  os.chdir(oldcwd)
+
+
 def WriteFullOTAPackage(input_zip, output_zip):
   # TODO: how to determine this?  We don't know what version it will
   # be installed on top of.  For now, we expect the API just won't
@@ -453,25 +467,44 @@ def WriteFullOTAPackage(input_zip, output_zip):
   if OPTIONS.wipe_user_data:
     script.FormatPartition("/data")
 
+  script.Print("******************************************");
+  script.Print("*       _____ ____          _____        *");
+  script.Print("*      |_   _/ __ \   /\   |  __ \       *");
+  script.Print("*        | || |  | | /  \  | |__) |      *");
+  script.Print("*        | || |  | |/ /\ \ |  ___/       *");
+  script.Print("*       _| || |__| / ____ \| |           *");
+  script.Print("*      |_____\____/_/    \_\_|           *");
+  script.Print("*                                        *");
+  script.Print("******************************************");
+  script.Print("******************************************");
+  script.Print("*********** IOAP KITKAT BUILD ************");
+  script.Print("******************************************");
+
   if "selinux_fc" in OPTIONS.info_dict:
     WritePolicyConfig(OPTIONS.info_dict["selinux_fc"], output_zip)
 
+  if OPTIONS.persist:
+    script.Mount("/system")
+    script.RunPersist("save")
+    script.Unmount("/system")
+
+  script.Print("Formatting /system")
   script.FormatPartition("/system")
   script.Mount("/system")
-  #script.UnpackPackageDir("recovery", "/system")
   script.UnpackPackageDir("system", "/system")
 
   symlinks = CopySystemFiles(input_zip, output_zip)
+  script.Print("Symlinking")
   script.MakeSymlinks(symlinks)
 
   boot_img = common.GetBootableImage("boot.img", "boot.img",
                                      OPTIONS.input_tmp, "BOOT")
-  #recovery_img = common.GetBootableImage("recovery.img", "recovery.img",
-  #                                       OPTIONS.input_tmp, "RECOVERY")
-  #MakeRecoveryPatch(OPTIONS.input_tmp, output_zip, recovery_img, boot_img)
 
   Item.GetMetadata(input_zip)
   Item.Get("system").SetPermissions(script)
+
+  if OPTIONS.persist:
+    script.RunPersist("restore")
 
   common.CheckSize(boot_img.data, "boot.img", OPTIONS.info_dict)
   common.ZipWriteStr(output_zip, "boot.img", boot_img.data)
@@ -482,9 +515,11 @@ def WriteFullOTAPackage(input_zip, output_zip):
     script.RunBackup("restore")
 
   script.ShowProgress(0.2, 10)
+  script.Print("Flashing boot.img")
   script.WriteRawImage("/boot", "boot.img")
 
   script.ShowProgress(0.1, 0)
+  script.Print("Enjoy IOAP!");
   device_specific.FullOTA_InstallEnd()
 
   if OPTIONS.extra_script is not None:
@@ -841,6 +876,8 @@ def main(argv):
         OPTIONS.aslr_mode = True
       else:
         OPTIONS.aslr_mode = False
+    elif o in ("--persist"):
+      OPTIONS.persist = a
     elif o in ("--worker_threads"):
       OPTIONS.worker_threads = int(a)
     elif o in ("--backup"):
@@ -862,6 +899,7 @@ def main(argv):
                                               "worker_threads=",
                                               "aslr_mode=",
                                               "backup=",
+                                              "persist=",
                                               "override_device="],
                              extra_option_handler=option_handler)
 
