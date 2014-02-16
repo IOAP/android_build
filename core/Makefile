@@ -13,13 +13,7 @@ ifneq ($(BUILD_WITH_COLORS),0)
 endif
 
 # Pick a reasonable string to use to identify files.
-ifneq "" "$(filter eng.%,$(BUILD_NUMBER))"
-  # BUILD_NUMBER has a timestamp in it, which means that
-  # it will change every time.  Pick a stable value.
-  FILE_NAME_TAG := eng.$(USER)
-else
-  FILE_NAME_TAG := $(BUILD_NUMBER)
-endif
+FILE_NAME_TAG := eng.$(USER)
 
 is_tests_build := $(filter tests,$(MAKECMDGOALS))
 
@@ -210,6 +204,7 @@ $(INSTALLED_BUILD_PROP_TARGET): $(BUILDINFO_SH) $(INTERNAL_BUILD_ID_MAKEFILE) $(
 			TARGET_CPU_ABI="$(TARGET_CPU_ABI)" \
 			TARGET_CPU_ABI2="$(TARGET_CPU_ABI2)" \
 			TARGET_AAPT_CHARACTERISTICS="$(TARGET_AAPT_CHARACTERISTICS)" \
+			TARGET_INIT_VENDOR_LIB="$(TARGET_INIT_VENDOR_LIB)" \
 			$(PRODUCT_BUILD_PROP_OVERRIDES) \
 			BUILD_DISPLAY_ID="$(BUILD_DISPLAY_ID)" \
 			BUILD_NUMBER="$(BUILD_NUMBER)" \
