@@ -46,8 +46,20 @@ $(combo_target)HAVE_STRLCPY := 0
 $(combo_target)HAVE_STRLCAT := 0
 $(combo_target)HAVE_KERNEL_MODULES := 0
 
-$(combo_target)GLOBAL_CFLAGS := -fno-exceptions -Wno-multichar
+ifeq ($(TARGET_USE_O_LEVEL_S),true)
+$(combo_target)GLOBAL_CFLAGS := -Os -fno-exceptions -Wno-multichar
+$(combo_target)RELEASE_CFLAGS := -Os -g -fno-strict-aliasing
+
+else ifeq ($(TARGET_USE_O_LEVEL_3),true)
+$(combo_target)GLOBAL_CFLAGS := -O3 -fno-exceptions -Wno-multichar
+$(combo_target)RELEASE_CFLAGS := -O3 -g -fno-strict-aliasing
+
+else
+$(combo_target)GLOBAL_CFLAGS := -O2 -fno-exceptions -Wno-multichar
 $(combo_target)RELEASE_CFLAGS := -O2 -g -fno-strict-aliasing
+
+endif
+
 $(combo_target)GLOBAL_LDFLAGS :=
 $(combo_target)GLOBAL_ARFLAGS := crsP
 
@@ -77,13 +89,22 @@ ifneq ($(USE_CCACHE),)
   # on a workstation.
   export CCACHE_BASEDIR := /
 
-  CCACHE_HOST_TAG := $(HOST_PREBUILT_TAG)
-  # If we are cross-compiling Windows binaries on Linux
-  # then use the linux ccache binary instead.
-  ifeq ($(HOST_OS)-$(BUILD_OS),windows-linux)
-    CCACHE_HOST_TAG := linux-$(BUILD_ARCH)
+  # It has been shown that ccache 3.x using direct mode can be several times
+  # faster than using the current ccache 2.4 that is used by default
+  # use the system ccache if it exists, else default to the one in prebuilts
+  ccache := $(shell which ccache)
+
+  ifeq ($(ccache),)
+    CCACHE_HOST_TAG := $(HOST_PREBUILT_TAG)
+    # If we are cross-compiling Windows binaries on Linux
+    # then use the linux ccache binary instead.
+    ifeq ($(HOST_OS)-$(BUILD_OS),windows-linux)
+      CCACHE_HOST_TAG := linux-$(BUILD_ARCH)
+    endif
+
+    ccache := prebuilts/misc/$(CCACHE_HOST_TAG)/ccache/ccache
   endif
-  ccache := prebuilts/misc/$(CCACHE_HOST_TAG)/ccache/ccache
+
   # Check that the executable is here.
   ccache := $(strip $(wildcard $(ccache)))
   ifdef ccache

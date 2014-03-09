@@ -27,6 +27,7 @@ PRODUCT_PACKAGES := \
 	Keyguard \
 	Apollo \
 	Mms \
+	OpenWnn \
 	PrintSpooler \
 	libWnnEngDic \
 	libWnnJpnDic \

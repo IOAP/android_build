@@ -29,6 +29,8 @@ Invoke ". build/envsetup.sh" from your shell to add the following functions to y
 - repopick: Utility to fetch changes from Gerrit.
 - installboot: Installs a boot.img to the connected device.
 - installrecovery: Installs a recovery.img to the connected device.
+- pushboot:Push a file from your OUT dir to your phone and reboots it, using absolute path.
+- sdkgen:  Generate an android.jar and create a new custom SDK with PAC-ROM APIs
 
 Look at the source to view more functions. The complete list is:
 EOF
@@ -575,7 +577,11 @@ function lunch()
     if [ $? -ne 0 ]
     then
         # if we can't find a product, try to grab it off the CM github
-        build/tools/roomservice.py $product true
+        T=$(gettop)
+        pushd $T > /dev/null
+        build/tools/roomservice.py $product
+        popd > /dev/null
+        check_product $product
     else
         build/tools/roomservice.py $product true
     fi
@@ -725,6 +731,10 @@ function omnom
     eat
 }
 
+function sdkgen() {
+        build/tools/customsdkgen.sh
+}
+
 function gettop
 {
     local TOPFILE=build/core/envsetup.mk
@@ -741,7 +751,7 @@ function gettop
             T=
             while [ \( ! \( -f $TOPFILE \) \) -a \( $PWD != "/" \) ]; do
                 \cd ..
-                T=`PWD= /bin/pwd`
+                T=`PWD= /bin/pwd -P`
             done
             \cd $HERE
             if [ -f "$T/$TOPFILE" ]; then
